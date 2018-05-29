@@ -62,3 +62,22 @@ static id _instance;
     [((SpringBoard*)[%c(SpringBoard) sharedApplication]) launchApplicationWithIdentifier:[[self application] bundleIdentifier] suspended:NO];
 }
 %end
+
+//this is reverse engineered from Activator. I rewrote this since I can't add a new instance variable on runtime.
+%hook _LASimpleListener
+-(BOOL)clearSwitcher {
+	SBAppSwitcherModel *switcher = [%c(SBAppSwitcherModel) sharedInstance];
+	NSMutableArray *recents = [[switcher valueForKey:@"_recents"] recents];
+	if (![recents count]) return NO;
+	[recents removeAllObjects];
+	//id v9 = [recents lastObject];
+	//[switcher remove:v6];
+
+	SBMainSwitcherViewController *appSwitcher = [%c(SBMainSwitcherViewController) sharedInstance];
+	if (appSwitcher) {
+		if ([appSwitcher isVisible]) [appSwitcher dismissSwitcherNoninteractively];
+		return YES;
+	}
+	return NO;
+}
+%end
