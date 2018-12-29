@@ -81,3 +81,20 @@ static id _instance;
 	return NO;
 }
 %end
+
+%hook BSSimpleAssertion___
+%new
+-(id)operations {
+    return NULL;
+}
+%new
+-(void)setOperations:(id)op {
+    return;
+}
+%end
+
+%ctor {
+    if ([objc_getClass("BSSimpleAssertion") respondsToSelector:@selector(operations)]) {
+        %init(BSSimpleAssertion___ = objc_getClass("BSSimpleAssertion"));
+    }
+}
