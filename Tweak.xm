@@ -1,4 +1,3 @@
-
 @interface SBMainSwitcherViewController
 +(id)sharedInstance;
 -(BOOL)toggleSwitcherNoninteractivelyWithSource:(id)source;
@@ -21,21 +20,33 @@
 -(SBApplication*)application;
 @end
 
+@interface SBRecentAppLayouts
+-(id)recents;
+@end
+
+@interface SBMediaController
+-(BOOL)changeTrack:(int)arg1 eventSource:(id)src;
+-(BOOL)beginSeek:(int)arg1 eventSource:(id)src;
+-(BOOL)endSeek:(int)arg1 eventSource:(id)src;
+-(BOOL)toggleRepeatForEventSource:(id)arg1;
+-(BOOL)toggleShuffleForEventSource:(id)arg1;
+-(BOOL)togglePlayPauseForEventSource:(id)arg1;
+@end
+
 static id _instance;
+
+%group Main
 %hook SBUserAgent
-- (id) init
-{
-    if (_instance == nil)
-    {
+- (id) init {
+    if (_instance == nil) {
         _instance = %orig;
     }
     return _instance;
 }
+
 %new
-+ (id) sharedUserAgent
-{
-    if (!_instance)
-    {
++ (id) sharedUserAgent {
+    if (!_instance) {
         return [[%c(SBUserAgent) alloc] init];
     }
     return _instance;
@@ -63,26 +74,25 @@ static id _instance;
 }
 %end
 
-//this is reverse engineered from Activator. I rewrote this since I can't add a new instance variable on runtime.
 %hook _LASimpleListener
 -(BOOL)clearSwitcher {
-	SBAppSwitcherModel *switcher = [%c(SBAppSwitcherModel) sharedInstance];
-	NSMutableArray *recents = [[switcher valueForKey:@"_recents"] recents];
-	if (![recents count]) return NO;
-	[recents removeAllObjects];
-	//id v9 = [recents lastObject];
-	//[switcher remove:v6];
-
-	SBMainSwitcherViewController *appSwitcher = [%c(SBMainSwitcherViewController) sharedInstance];
-	if (appSwitcher) {
-		if ([appSwitcher isVisible]) [appSwitcher dismissSwitcherNoninteractively];
-		return YES;
-	}
-	return NO;
+    SBAppSwitcherModel *switcher = [%c(SBAppSwitcherModel) sharedInstance];
+    NSMutableArray *recents = [[switcher valueForKey:@"_recents"] recents];
+    if (![recents count]) return NO;
+    [recents removeAllObjects];
+    
+    SBMainSwitcherViewController *appSwitcher = [%c(SBMainSwitcherViewController) sharedInstance];
+    if (appSwitcher) {
+        if ([appSwitcher isVisible]) [appSwitcher dismissSwitcherNoninteractively];
+        return YES;
+    }
+    return NO;
 }
 %end
+%end
 
-%hook BSSimpleAssertion___
+%group BSS
+%hook BSSimpleAssertion
 %new
 -(id)operations {
     return NULL;
@@ -92,9 +102,44 @@ static id _instance;
     return;
 }
 %end
+%end
+
+%group Media
+%hook SBMediaController
+%new
+-(BOOL)changeTrack:(int)arg1 {
+    return [self changeTrack:arg1 eventSource:nil];
+}
+%new
+-(BOOL)beginSeek:(int)arg1 {
+    return [self beginSeek:arg1 eventSource:nil];
+}
+%new
+-(BOOL)endSeek:(int)arg1 {
+    return [self endSeek:arg1 eventSource:nil];
+}
+%new
+-(BOOL)toggleRepeat {
+    return [self toggleRepeatForEventSource:nil];
+}
+%new
+-(BOOL)toggleShuffle {
+    return [self toggleShuffleForEventSource:nil];
+}
+%new
+-(BOOL)togglePlayPause {
+    return [self togglePlayPauseForEventSource:nil];
+}
+%end
+%end
 
 %ctor {
-    if ([objc_getClass("BSSimpleAssertion") respondsToSelector:@selector(operations)]) {
-        %init(BSSimpleAssertion___ = objc_getClass("BSSimpleAssertion"));
+    if (![objc_getClass("BSSimpleAssertion") respondsToSelector:@selector(operations)]) {
+        %init(BSS);
     }
+    if (![objc_getClass("SBMediaController") respondsToSelector:@selector(changeTrack:)]) {
+        %init(Media);
+    }
+    %init(Main);
 }
+
